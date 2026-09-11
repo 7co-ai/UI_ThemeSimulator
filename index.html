@@ -3,504 +3,597 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>UI Design Token Simulator</title>
-
-  <!-- iOS / Safari ホーム画面Webアプリ (PWA) 最適化設定 -->
+  <title>UI Theme Designer Simulator</title>
+  
+  <!-- Web App / PWA Meta for Mobile -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="UI Simulator">
-  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="UIカラー">
+  <meta name="application-name" content="UIカラー">
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236366F1'/><circle cx='50' cy='50' r='28' fill='%23FFFFFF'/><circle cx='50' cy='50' r='18' fill='%23F43F5E'/></svg>">
 
-  <!-- CDN スタック: Tailwind CSS, Alpine.js, Lucide Icons -->
+  <!-- CDN Tech Stack -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
-
   <style>
-    /* iOS セーフエリアおよびタッチ最適化 */
-    body {
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-    }
-    input, select, textarea, pre, code {
-      user-select: text;
-    }
-    /* カスタムスライダースタイル */
-    input[type=range] {
-      -webkit-appearance: none;
-      background: transparent;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: 18px;
-      width: 18px;
-      border-radius: 50%;
-      background: #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      cursor: pointer;
-      margin-top: -6px;
-    }
-    input[type=range]::-webkit-slider-runnable-track {
-      width: 100%;
-      height: 6px;
-      cursor: pointer;
-      background: #1e293b;
-      border-radius: 9999px;
+    [x-cloak] { display: none !important; }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    * { -webkit-tap-highlight-color: transparent; }
+    @supports (-webkit-touch-callout: none) {
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
     }
   </style>
 </head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col font-sans select-none"
+      x-data="themeSimulator()" x-cloak>
 
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-10"
-      x-data="uiSimulator()" 
-      x-init="initApp()">
-
-  <!-- ヘッダーバー -->
-  <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-all duration-200"
-             :style="`background-color: ${tokens.primary};`">
-          <i data-lucide="layout-template" class="w-5 h-5 text-white"></i>
-        </div>
-        <div>
-          <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-            UI Token Studio
-            <span class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">PWA Ready</span>
-          </h1>
-          <p class="text-[11px] text-slate-400 hidden sm:block">デザインシステム & コンポーネントシミュレーター</p>
-        </div>
+  <!-- Navigation Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 lg:px-6 py-2.5 flex items-center justify-between shadow-xs">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow font-bold transition-all shrink-0"
+           :style="getStyle(palette[0], palette[1] || palette[0], useGradient)">
+        <i data-lucide="palette" class="w-4 h-4"></i>
       </div>
-
-      <!-- 右側アクションメニュー -->
-      <div class="flex items-center gap-2">
-        <button @click="resetTokens()" title="初期値に戻す" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition text-xs flex items-center gap-1">
-          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-          <span class="hidden md:inline">リセット</span>
-        </button>
-        <button @click="downloadJSON()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center gap-1.5 transition active:scale-95">
-          <i data-lucide="download" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">JSON保存</span>
-        </button>
-        <button @click="copyCSS()" class="px-3 py-1.5 text-xs font-semibold text-white rounded-lg flex items-center gap-1.5 transition active:scale-95 shadow-md"
-                :style="`background-color: ${tokens.primary};`">
-          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-          <span>CSSコピー</span>
-        </button>
+      <div>
+        <h1 class="text-sm lg:text-base font-bold leading-tight">UI Theme Simulator</h1>
+        <p class="text-[10px] text-slate-400 hidden sm:block">スマホ・PC両対応デザイン検証ツール</p>
       </div>
+    </div>
+
+    <!-- Actions Toolbar -->
+    <div class="flex items-center space-x-1.5 text-xs">
+      <button @click="copyCssVariables" class="p-2 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center space-x-1 transition active:scale-95" title="CSS変数コピー">
+        <i data-lucide="code" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="hidden sm:inline">CSS変数</span>
+      </button>
+      <button @click="copyHexList" class="p-2 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center space-x-1 transition active:scale-95" title="HEX一覧コピー">
+        <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="hidden sm:inline">HEX</span>
+      </button>
+      <button @click="exportJson" class="p-2 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center space-x-1 transition active:scale-95" title="JSON保存">
+        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="hidden sm:inline">保存</span>
+      </button>
+      <label class="p-2 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center space-x-1 transition cursor-pointer active:scale-95" title="JSON読み込み">
+        <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-600"></i>
+        <input type="file" accept=".json" class="hidden" @change="importJson">
+      </label>
+      <button @click="randomizeTheme" class="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 flex items-center space-x-1 shadow-sm transition active:scale-95">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">ランダム</span>
+      </button>
     </div>
   </header>
 
-  <!-- メインエリア -->
-  <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-    
-    <!-- 左側：コントローラー (5列) -->
-    <aside class="lg:col-span-5 space-y-4">
-      
-      <!-- プリセットセレクター -->
-      <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-sm">
-        <label class="text-[11px] font-semibold text-slate-400 block mb-2 uppercase tracking-wider">テーマプリセット</label>
-        <div class="grid grid-cols-4 gap-1.5">
-          <button @click="applyPreset('modern')" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-200 transition border border-slate-700/60">Modern</button>
-          <button @click="applyPreset('cyber')" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-200 transition border border-slate-700/60">Cyber</button>
-          <button @click="applyPreset('warm')" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-200 transition border border-slate-700/60">Warm</button>
-          <button @click="applyPreset('mono')" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-200 transition border border-slate-700/60">Mono</button>
+  <!-- Workspace Grid Layout -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 lg:p-6 pb-20 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- Controls Column (Visible on PC, or Mobile when Tab is 'palette' or 'theme') -->
+    <section class="lg:col-span-5 xl:col-span-4 space-y-4"
+             :class="{ 'hidden lg:block': mobileTab === 'preview' }">
+
+      <!-- Panel 1: Color Controller -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200"
+           x-show="mobileTab === 'palette' || window.innerWidth >= 1024">
+        
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase">パレット色数選択</span>
+          <div class="inline-flex rounded-lg bg-slate-100 p-0.5">
+            <template x-for="count in [2, 3, 4, 5]" :key="count">
+              <button @click="setColorCount(count)"
+                      class="px-2.5 py-1 text-xs font-bold rounded-md transition"
+                      :class="colorCount === count ? 'bg-white shadow-xs text-indigo-600' : 'text-slate-500 hover:text-slate-800'"
+                      x-text="count + '色'">
+              </button>
+            </template>
+          </div>
         </div>
+
+        <!-- Palette Circle Slots -->
+        <div class="flex items-center justify-center gap-2 py-3 px-2 bg-slate-50 rounded-xl border border-slate-100 min-h-[90px]">
+          <template x-for="(color, index) in activePalette" :key="index">
+            <div class="flex flex-col items-center flex-1 max-w-[60px]">
+              <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full shadow border-2 border-white transition-transform active:scale-95 cursor-pointer relative overflow-hidden"
+                   :style="`background-color: ${color}`">
+                <input type="color" x-model="palette[index]" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+              </div>
+              <input type="text" x-model="palette[index]" class="text-[10px] font-mono mt-1 text-center w-full px-0.5 py-0.5 border border-slate-200 rounded focus:border-indigo-500 uppercase bg-white">
+            </div>
+          </template>
+        </div>
+
+        <!-- Gradient vs Solid Switch -->
+        <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="blend" class="w-4 h-4 text-indigo-600"></i>
+            <div>
+              <div class="text-xs font-bold text-slate-700">塗りスタイル</div>
+              <div class="text-[10px] text-slate-400" x-text="useGradient ? 'グラデーション' : '単色（フラット）'"></div>
+            </div>
+          </div>
+          <button @click="useGradient = !useGradient"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="useGradient ? 'bg-indigo-600' : 'bg-slate-300'">
+            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
+                  :class="useGradient ? 'translate-x-5' : 'translate-x-0'"></span>
+          </button>
+        </div>
+
+        <!-- Contrast Indicator -->
+        <div class="mt-2.5 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+          <span class="text-[11px] text-slate-500 font-medium">白文字コントラスト比</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-xs"
+                :class="isHeaderAccessible ? 'bg-emerald-600' : 'bg-amber-600'"
+                x-text="isHeaderAccessible ? '良好 (視認性◎)' : '薄い色 (注意)'"></span>
+        </div>
+
+        <button @click="saveToMyPalettes" class="w-full mt-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition active:scale-95">
+          <i data-lucide="bookmark-plus" class="w-4 h-4"></i>
+          <span>現在のカラーをマイパレットに保存</span>
+        </button>
       </div>
 
-      <!-- トークン調整パネル -->
-      <div class="bg-slate-900/90 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm space-y-5">
-        
-        <!-- カラー設定 -->
-        <div>
-          <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <i data-lucide="palette" class="w-4 h-4 text-indigo-400"></i> カラーパレット
-          </h2>
-          <div class="grid grid-cols-3 gap-2.5">
-            <div>
-              <label class="text-[11px] text-slate-400 block mb-1">Primary</label>
-              <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <input type="color" x-model="tokens.primary" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0">
-                <input type="text" x-model="tokens.primary" class="w-full bg-transparent text-[10px] font-mono text-slate-200 uppercase focus:outline-none">
-              </div>
-            </div>
-            <div>
-              <label class="text-[11px] text-slate-400 block mb-1">Surface</label>
-              <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <input type="color" x-model="tokens.surface" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0">
-                <input type="text" x-model="tokens.surface" class="w-full bg-transparent text-[10px] font-mono text-slate-200 uppercase focus:outline-none">
-              </div>
-            </div>
-            <div>
-              <label class="text-[11px] text-slate-400 block mb-1">Text</label>
-              <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <input type="color" x-model="tokens.text" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0">
-                <input type="text" x-model="tokens.text" class="w-full bg-transparent text-[10px] font-mono text-slate-200 uppercase focus:outline-none">
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Panel 2: Component Assignment -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3"
+           x-show="mobileTab === 'palette' || window.innerWidth >= 1024">
+        <h2 class="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+          <i data-lucide="sliders" class="w-4 h-4 text-indigo-600"></i>
+          <span>UIコンポーネント配色配置</span>
+        </h2>
 
-        <hr class="border-slate-800">
-
-        <!-- ジオメトリ & スペーシング -->
-        <div class="space-y-4">
-          <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i> 形状・レイアウト
-          </h2>
-
-          <!-- 角丸 -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <div class="flex justify-between text-xs mb-1.5">
-              <span class="text-slate-400">角丸 (Border Radius)</span>
-              <span class="text-indigo-400 font-mono" x-text="tokens.radius + 'px'"></span>
-            </div>
-            <input type="range" min="0" max="32" step="2" x-model="tokens.radius" class="w-full">
+            <label class="block text-[11px] text-slate-500 font-medium mb-1">メイン/ヘッダー</label>
+            <select x-model="mapping.primaryIndex" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-medium">
+              <template x-for="(c, i) in activePalette" :key="i">
+                <option :value="i" x-text="`Color ${i+1}`"></option>
+              </template>
+            </select>
           </div>
 
-          <!-- パディング -->
           <div>
-            <div class="flex justify-between text-xs mb-1.5">
-              <span class="text-slate-400">コンテナ余白 (Padding)</span>
-              <span class="text-indigo-400 font-mono" x-text="tokens.padding + 'px'"></span>
-            </div>
-            <input type="range" min="12" max="40" step="2" x-model="tokens.padding" class="w-full">
+            <label class="block text-[11px] text-slate-500 font-medium mb-1">グラデーション対照</label>
+            <select x-model="mapping.secondaryIndex" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-medium" :disabled="!useGradient">
+              <template x-for="(c, i) in activePalette" :key="i">
+                <option :value="i" x-text="`Color ${i+1}`"></option>
+              </template>
+            </select>
           </div>
 
-          <!-- ボーダー幅 -->
           <div>
-            <div class="flex justify-between text-xs mb-1.5">
-              <span class="text-slate-400">枠線幅 (Border Width)</span>
-              <span class="text-indigo-400 font-mono" x-text="tokens.borderWidth + 'px'"></span>
-            </div>
-            <input type="range" min="0" max="4" step="1" x-model="tokens.borderWidth" class="w-full">
+            <label class="block text-[11px] text-slate-500 font-medium mb-1">アクセント/バッジ</label>
+            <select x-model="mapping.accentIndex" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-medium">
+              <template x-for="(c, i) in activePalette" :key="i">
+                <option :value="i" x-text="`Color ${i+1}`"></option>
+              </template>
+            </select>
           </div>
 
-          <!-- 影 (Shadow) -->
           <div>
-            <label class="text-xs text-slate-400 block mb-1.5">エレベーション (Shadow)</label>
-            <select x-model="tokens.shadow" class="w-full bg-slate-950 border border-slate-800 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-indigo-500 text-slate-200">
-              <option value="none">Flat (None)</option>
-              <option value="sm">Subtle (SM)</option>
-              <option value="md">Elevated (MD)</option>
-              <option value="lg">Floating (LG)</option>
-              <option value="glow">Neon Glow</option>
+            <label class="block text-[11px] text-slate-500 font-medium mb-1">テーブル見出し</label>
+            <select x-model="mapping.tableHeaderIndex" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-medium">
+              <template x-for="(c, i) in activePalette" :key="i">
+                <option :value="i" x-text="`Color ${i+1}`"></option>
+              </template>
             </select>
           </div>
         </div>
-
-        <hr class="border-slate-800">
-
-        <!-- コントラスト比自動診断 -->
-        <div>
-          <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i> WCAG コントラスト診断
-          </h2>
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-            <div>
-              <span class="text-slate-400 block text-[10px]">Text vs Surface</span>
-              <span class="text-base font-mono font-bold" x-text="contrast.ratio + ':1'"></span>
-            </div>
-            <div class="flex gap-2">
-              <span class="px-2 py-1 rounded text-[10px] font-bold"
-                    :class="contrast.aa ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'">
-                AA: <span x-text="contrast.aa ? 'PASS' : 'FAIL'"></span>
-              </span>
-              <span class="px-2 py-1 rounded text-[10px] font-bold"
-                    :class="contrast.aaa ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'">
-                AAA: <span x-text="contrast.aaa ? 'PASS' : 'FAIL'"></span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </aside>
-
-    <!-- 右側：ライブプレビュー (7列) -->
-    <section class="lg:col-span-7 space-y-4">
-      
-      <div class="flex items-center justify-between px-1">
-        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> Live Component Showcase
-        </span>
-        <span class="text-[11px] text-slate-500">トークンを即時レンダリング中</span>
       </div>
 
-      <!-- プレビュー展示コンテナ -->
-      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 sm:p-7 space-y-6 backdrop-blur-sm">
-        
-        <!-- カードモックアップ -->
-        <div class="transition-all duration-150"
-             :style="`
-               background-color: ${tokens.surface};
-               color: ${tokens.text};
-               border-radius: ${tokens.radius}px;
-               padding: ${tokens.padding}px;
-               border: ${tokens.borderWidth}px solid ${tokens.primary}40;
-             `"
-             :class="getShadowClass()">
-          
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-xs font-semibold px-2.5 py-1 text-white shadow-sm inline-flex items-center gap-1"
-                  :style="`background-color: ${tokens.primary}; border-radius: ${Math.max(4, tokens.radius / 2)}px;`">
-              <i data-lucide="zap" class="w-3 h-3"></i> Realtime Sync
-            </span>
-            <div class="flex items-center gap-1 opacity-60 text-xs">
-              <i data-lucide="clock" class="w-3.5 h-3.5"></i> 0.12s
+      <!-- Panel 3: Presets & Storage -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3"
+           x-show="mobileTab === 'theme' || window.innerWidth >= 1024">
+        <h2 class="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
+          <span>テーマプリセット</span>
+        </h2>
+
+        <div class="space-y-1.5">
+          <template x-for="(preset, index) in presetThemes" :key="index">
+            <div @click="applyPreset(preset)" class="p-2 rounded-xl border border-slate-100 hover:border-indigo-200 bg-slate-50 flex items-center justify-between cursor-pointer transition active:scale-98">
+              <div>
+                <div class="text-xs font-bold text-slate-800" x-text="preset.name"></div>
+                <div class="text-[10px] text-slate-400" x-text="preset.keywords"></div>
+              </div>
+              <div class="flex space-x-1 shrink-0">
+                <template x-for="c in preset.colors" :key="c">
+                  <span class="w-3.5 h-3.5 rounded-full border border-black/10" :style="`background-color: ${c}`"></span>
+                </template>
+              </div>
             </div>
-          </div>
-
-          <h3 class="text-lg font-bold mb-2">インタラクティブ・プレビュー</h3>
-          <p class="text-xs sm:text-sm leading-relaxed opacity-80 mb-6">
-            左パネルで設定したプライマリカラー、サーフェス、角丸、パディングがすべてのコンポーネントに自動適用されます。
-          </p>
-
-          <!-- アクションボタン群 -->
-          <div class="flex flex-wrap items-center gap-3">
-            <button class="text-xs font-semibold px-4 py-2.5 text-white flex items-center gap-2 transition active:scale-95 shadow-md"
-                    :style="`background-color: ${tokens.primary}; border-radius: ${tokens.radius}px;`">
-              <i data-lucide="check" class="w-3.5 h-3.5"></i>
-              メインボタン
-            </button>
-            <button class="text-xs font-semibold px-4 py-2.5 border transition active:scale-95"
-                    :style="`
-                      border-color: ${tokens.primary};
-                      color: ${tokens.text};
-                      border-radius: ${tokens.radius}px;
-                      border-width: ${tokens.borderWidth || 1}px;
-                    `">
-              アウトライン
-            </button>
-            <button class="text-xs font-medium px-3 py-2 opacity-70 hover:opacity-100 transition">
-              キャンセル
-            </button>
-          </div>
+          </template>
         </div>
 
-        <!-- フォームUIプレビュー -->
-        <div class="space-y-3">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">フォームコンポーネント</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-[11px] opacity-75 block mb-1">コンポーネント名</label>
-              <input type="text" value="Theme Button Component" 
-                     class="w-full text-xs px-3 py-2.5 focus:outline-none transition"
-                     :style="`
-                       background-color: ${tokens.surface};
-                       color: ${tokens.text};
-                       border-radius: ${tokens.radius}px;
-                       border: ${tokens.borderWidth || 1}px solid ${tokens.primary}50;
-                     `">
-            </div>
-            <div>
-              <label class="text-[11px] opacity-75 block mb-1">カテゴリ選択</label>
-              <select class="w-full text-xs px-3 py-2.5 focus:outline-none transition"
-                      :style="`
-                        background-color: ${tokens.surface};
-                        color: ${tokens.text};
-                        border-radius: ${tokens.radius}px;
-                        border: ${tokens.borderWidth || 1}px solid ${tokens.primary}50;
-                      `">
-                <option>Navigation (ナビゲーション)</option>
-                <option>Data Display (データ表示)</option>
-                <option>Feedback (フィードバック)</option>
-              </select>
-            </div>
+        <!-- Saved Palettes -->
+        <div class="pt-2 border-t border-slate-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold text-slate-400">マイパレット履歴</span>
+            <span class="text-[10px] text-slate-400" x-text="savedPalettes.length + ' 件'"></span>
+          </div>
+
+          <template x-if="savedPalettes.length === 0">
+            <p class="text-xs text-slate-400 py-1 text-center">保存データはありません</p>
+          </template>
+
+          <div class="space-y-1 max-h-36 overflow-y-auto custom-scrollbar">
+            <template x-for="(sp, idx) in savedPalettes" :key="idx">
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
+                <div class="flex items-center space-x-1 cursor-pointer flex-1" @click="loadSavedPalette(sp)">
+                  <template x-for="c in sp" :key="c">
+                    <span class="w-3.5 h-3.5 rounded-full border border-black/10" :style="`background-color: ${c}`"></span>
+                  </template>
+                  <span class="text-[10px] text-slate-400 ml-2" x-text="sp.length + '色'"></span>
+                </div>
+                <button @click="removeSavedPalette(idx)" class="text-slate-300 hover:text-red-500 p-1">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+              </div>
+            </template>
           </div>
         </div>
-
-        <!-- ステータスバッジ群 -->
-        <div class="space-y-3">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">インジケーター & バッジ</label>
-          <div class="flex flex-wrap gap-2.5">
-            <div class="px-3 py-1.5 text-xs font-medium flex items-center gap-2"
-                 :style="`
-                   background-color: ${tokens.primary}20;
-                   color: ${tokens.text};
-                   border-radius: ${tokens.radius}px;
-                   border: 1px solid ${tokens.primary}40;
-                 `">
-              <span class="w-2 h-2 rounded-full animate-pulse" :style="`background-color: ${tokens.primary};`"></span>
-              稼働中 (Operational)
-            </div>
-
-            <div class="px-3 py-1.5 text-xs font-medium flex items-center gap-2"
-                 :style="`
-                   background-color: ${tokens.surface};
-                   color: ${tokens.text};
-                   border-radius: ${tokens.radius}px;
-                   border: ${tokens.borderWidth || 1}px solid ${tokens.primary}30;
-                 `">
-              <i data-lucide="cpu" class="w-3.5 h-3.5" :style="`color: ${tokens.primary};`"></i>
-              System Ready
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- コード出力カード -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5">
-            <i data-lucide="code-2" class="w-4 h-4 text-indigo-400"></i> CSS Variables
-          </span>
-          <button @click="copyCSS()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">コピー</button>
-        </div>
-        <pre class="bg-slate-950 p-3 rounded-xl text-[11px] font-mono text-slate-300 overflow-x-auto border border-slate-800/70 leading-relaxed"><code x-text="generateCSS()"></code></pre>
       </div>
 
     </section>
+
+    <!-- Preview Stage Column -->
+    <section class="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4"
+             :class="{ 'hidden lg:flex': mobileTab !== 'preview' }">
+
+      <!-- Header Info Bar -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] font-semibold text-slate-400 uppercase">Current Scheme</div>
+          <div class="text-sm sm:text-base font-extrabold text-slate-800" x-text="activeThemeName"></div>
+        </div>
+        <!-- Mobile Switcher -->
+        <div class="flex sm:hidden rounded-lg bg-slate-100 p-0.5 text-[11px] font-bold">
+          <button @click="mobileScreenIndex = 0" :class="mobileScreenIndex === 0 ? 'bg-white shadow text-indigo-600' : 'text-slate-500'" class="px-2.5 py-1 rounded-md">画面1</button>
+          <button @click="mobileScreenIndex = 1" :class="mobileScreenIndex === 1 ? 'bg-white shadow text-indigo-600' : 'text-slate-500'" class="px-2.5 py-1 rounded-md">画面2</button>
+          <button @click="mobileScreenIndex = 2" :class="mobileScreenIndex === 2 ? 'bg-white shadow text-indigo-600' : 'text-slate-500'" class="px-2.5 py-1 rounded-md">画面3</button>
+        </div>
+        <!-- Desktop Indicators -->
+        <div class="hidden sm:flex space-x-1.5 items-center">
+          <template x-for="c in activePalette" :key="c">
+            <span class="w-5 h-5 rounded-full border-2 border-white shadow-xs" :style="`background-color: ${c}`"></span>
+          </template>
+        </div>
+      </div>
+
+      <!-- Smartphone Preview -->
+      <div class="bg-slate-200/70 border border-slate-300/70 rounded-3xl p-4 sm:p-6 overflow-x-auto custom-scrollbar flex items-center justify-center min-h-[560px]">
+        
+        <div class="flex items-start justify-center gap-5 w-full">
+          
+          <!-- Screen 1: Dashboard -->
+          <div class="w-[260px] shrink-0 rounded-[36px] shadow-xl p-3 border-[5px] border-slate-800 bg-slate-50 flex flex-col relative overflow-hidden transition-all duration-300"
+               :class="{ 'hidden sm:flex': mobileScreenIndex !== 0 }">
+            <div class="rounded-2xl p-3.5 shadow-sm text-white transition-all duration-300"
+                 :style="getStyle(getColor(mapping.primaryIndex), getColor(mapping.secondaryIndex), useGradient)">
+              <div class="flex items-center justify-between text-xs mb-2">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                <span class="font-bold">Dashboard</span>
+                <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+              </div>
+              <div class="text-[10px] opacity-85">全体アクティビティ</div>
+              <div class="text-xl font-black">82.7 <span class="text-xs font-normal">pts</span></div>
+            </div>
+
+            <div class="mt-3 space-y-2.5 px-0.5 flex-1">
+              <!-- Graph -->
+              <div class="p-2.5 rounded-xl bg-white shadow-xs border border-slate-100">
+                <div class="text-[10px] font-bold text-slate-700">週間推移</div>
+                <div class="h-10 w-full mt-1.5 rounded flex items-end gap-1 p-1 bg-slate-50">
+                  <template x-for="(c, i) in activePalette" :key="i">
+                    <div class="flex-1 rounded-t transition-all"
+                         :style="`height: ${[45, 80, 60, 95, 70][i % 5]}%; background-color: ${c}`"></div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Metrics -->
+              <div class="grid grid-cols-2 gap-2">
+                <div class="p-2 rounded-xl bg-white shadow-xs text-center">
+                  <div class="text-[9px] text-slate-400">達成度</div>
+                  <div class="text-xs font-bold mt-0.5 text-slate-700">78%</div>
+                </div>
+                <div class="p-2 rounded-xl bg-white shadow-xs text-center">
+                  <div class="text-[9px] text-slate-400">ポイント</div>
+                  <div class="text-xs font-bold mt-0.5 text-slate-700">24,000</div>
+                </div>
+              </div>
+
+              <button class="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow transition active:scale-95"
+                      :style="getStyle(getColor(mapping.primaryIndex), getColor(mapping.secondaryIndex), useGradient)">
+                詳細データ表示
+              </button>
+            </div>
+          </div>
+
+          <!-- Screen 2: Task List -->
+          <div class="w-[260px] shrink-0 rounded-[36px] shadow-xl p-3 border-[5px] border-slate-800 bg-slate-50 flex flex-col relative overflow-hidden transition-all duration-300"
+               :class="{ 'hidden sm:flex': mobileScreenIndex !== 1 }">
+            <div class="px-1 pt-1 pb-2">
+              <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                <span>09:41</span>
+                <i data-lucide="wifi" class="w-3 h-3"></i>
+              </div>
+              <h3 class="text-base font-extrabold text-slate-800">プロジェクト管理</h3>
+            </div>
+
+            <div class="rounded-xl overflow-hidden shadow-xs border border-slate-200/80 mb-2 bg-white">
+              <div class="px-2.5 py-1.5 text-[10px] font-bold flex justify-between items-center text-white"
+                   :style="`background-color: ${getColor(mapping.tableHeaderIndex)}`">
+                <span>項目名</span>
+                <span>ステータス</span>
+              </div>
+              <div class="text-[10px] divide-y divide-slate-100">
+                <div class="p-2 flex justify-between items-center">
+                  <span class="font-medium text-slate-700">カラー選定</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] text-white" :style="`background-color: ${getColor(mapping.accentIndex)}`">完了</span>
+                </div>
+                <div class="p-2 flex justify-between items-center">
+                  <span class="font-medium text-slate-700">モックアップ</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] text-white opacity-85" :style="`background-color: ${getColor(mapping.primaryIndex)}`">対応中</span>
+                </div>
+                <div class="p-2 flex justify-between items-center">
+                  <span class="font-medium text-slate-700">デザインレビュー</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] bg-slate-200 text-slate-600">未着手</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="mt-auto w-full py-2 rounded-xl text-white font-bold text-xs shadow"
+                    :style="getStyle(getColor(mapping.primaryIndex), getColor(mapping.secondaryIndex), useGradient)">
+              ＋ 新規タスク追加
+            </button>
+          </div>
+
+          <!-- Screen 3: Settings & Profile -->
+          <div class="w-[260px] shrink-0 rounded-[36px] shadow-xl p-3 border-[5px] border-slate-800 bg-slate-50 flex flex-col relative overflow-hidden transition-all duration-300"
+               :class="{ 'hidden sm:flex': mobileScreenIndex !== 2 }">
+            <div class="rounded-2xl p-3 text-center text-white shadow-sm"
+                 :style="getStyle(getColor(mapping.primaryIndex), getColor(mapping.secondaryIndex), useGradient)">
+              <div class="w-10 h-10 rounded-full border-2 border-white/80 mx-auto mb-1 bg-white/20 flex items-center justify-center">
+                <i data-lucide="user" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="font-bold text-xs">設定プレビュー</div>
+              <div class="text-[9px] opacity-80" x-text="colorCount + '色構成モード'"></div>
+            </div>
+
+            <div class="mt-3 space-y-2 px-0.5 flex-1">
+              <div class="bg-white p-2 rounded-xl border border-slate-100">
+                <div class="text-[9px] text-slate-400">ハイライト設定</div>
+                <div class="flex items-center space-x-1.5 mt-1">
+                  <span class="w-3 h-3 rounded-full" :style="`background-color: ${getColor(mapping.accentIndex)}`"></span>
+                  <span class="text-[11px] font-medium text-slate-700">アクセント色</span>
+                </div>
+              </div>
+
+              <div class="bg-white p-2 rounded-xl border border-slate-100">
+                <div class="text-[9px] text-slate-400">グラデーション状態</div>
+                <span class="text-[11px] font-bold" :style="`color: ${getColor(mapping.primaryIndex)}`"
+                      x-text="useGradient ? 'Active (グラデ)' : 'Solid (単色)'"></span>
+              </div>
+
+              <button class="w-full mt-auto py-2 rounded-xl text-white font-bold text-xs shadow"
+                      :style="`background-color: ${getColor(mapping.primaryIndex)}`">
+                設定を適用する
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
-  <!-- トースト通知 -->
-  <div x-show="toast.show" 
-       x-transition:enter="transition ease-out duration-200 transform"
-       x-transition:enter-start="opacity-0 translate-y-4"
-       x-transition:enter-end="opacity-100 translate-y-0"
-       x-transition:leave="transition ease-in duration-150 transform"
-       x-transition:leave-start="opacity-100 translate-y-0"
-       x-transition:leave-end="opacity-0 translate-y-4"
-       class="fixed bottom-6 right-6 bg-indigo-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 border border-indigo-400/30">
-    <i data-lucide="check-circle-2" class="w-4 h-4 text-white"></i>
-    <span x-text="toast.message"></span>
-  </div>
+  <!-- Mobile Bottom Navigation -->
+  <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 z-50 flex justify-around py-2 pb-safe shadow-lg">
+    <button @click="mobileTab = 'palette'"
+            class="flex flex-col items-center flex-1 py-1 transition"
+            :class="mobileTab === 'palette' ? 'text-indigo-600 font-bold' : 'text-slate-400'">
+      <i data-lucide="palette" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5">カラー編集</span>
+    </button>
+    <button @click="mobileTab = 'preview'"
+            class="flex flex-col items-center flex-1 py-1 transition"
+            :class="mobileTab === 'preview' ? 'text-indigo-600 font-bold' : 'text-slate-400'">
+      <i data-lucide="smartphone" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5">スマホ実機</span>
+    </button>
+    <button @click="mobileTab = 'theme'"
+            class="flex flex-col items-center flex-1 py-1 transition"
+            :class="mobileTab === 'theme' ? 'text-indigo-600 font-bold' : 'text-slate-400'">
+      <i data-lucide="grid" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5">テーマ一覧</span>
+    </button>
+  </nav>
 
+  <!-- Script Controller -->
   <script>
-    function uiSimulator() {
+    function themeSimulator() {
       return {
-        tokens: {
-          primary: '#6366f1',
-          surface: '#1e293b',
-          text: '#f8fafc',
-          radius: 12,
-          padding: 24,
-          borderWidth: 1,
-          shadow: 'md'
+        mobileTab: 'palette',
+        mobileScreenIndex: 0,
+        colorCount: 5,
+        useGradient: true,
+
+        palette: ['#F8978E', '#F1443D', '#F28E5B', '#F6CA59', '#F6BBBE'],
+        activeThemeName: '暖色 ＋ ラウンド ＋ グラデーション',
+        
+        mapping: {
+          primaryIndex: 0,
+          secondaryIndex: 1,
+          accentIndex: 3,
+          tableHeaderIndex: 2
         },
-        contrast: { ratio: '0', aa: false, aaa: false },
-        toast: { show: false, message: '' },
 
-        initApp() {
-          const saved = localStorage.getItem('app_ui_tokens_v2');
-          if (saved) {
-            try {
-              this.tokens = { ...this.tokens, ...JSON.parse(saved) };
-            } catch (e) {
-              console.error(e);
-            }
+        presetThemes: [
+          {
+            name: '暖色グラデーション (5色)',
+            keywords: '女性的・温かみ・最新',
+            colors: ['#F8978E', '#F1443D', '#F28E5B', '#F6CA59', '#F6BBBE']
+          },
+          {
+            name: 'オーシャン・テック (3色)',
+            keywords: '洗練・知的・信頼',
+            colors: ['#0284C7', '#0EA5E9', '#0F172A']
+          },
+          {
+            name: 'ナチュラル・アース (2色)',
+            keywords: '自然・オーガニック',
+            colors: ['#2D6A4F', '#D8F3DC']
+          },
+          {
+            name: 'ポップ・ネオン (4色)',
+            keywords: '元気・アクティブ・刺激',
+            colors: ['#8B5CF6', '#EC4899', '#06B6D4', '#F59E0B']
           }
-          this.calculateContrast();
+        ],
 
-          this.$watch('tokens', () => {
-            localStorage.setItem('app_ui_tokens_v2', JSON.stringify(this.tokens));
-            this.calculateContrast();
-          }, { deep: true });
+        savedPalettes: [],
 
+        init() {
+          const stored = localStorage.getItem('theme_simulator_master');
+          if (stored) {
+            try { this.savedPalettes = JSON.parse(stored); } catch(e){}
+          }
+          this.$nextTick(() => lucide.createIcons());
+          this.$watch('palette', () => this.$nextTick(() => lucide.createIcons()));
+          this.$watch('mobileTab', () => this.$nextTick(() => lucide.createIcons()));
+        },
+
+        setColorCount(count) {
+          this.colorCount = count;
+          this.normalizeIndices();
           this.$nextTick(() => lucide.createIcons());
         },
 
-        getShadowClass() {
-          const map = {
-            none: 'shadow-none',
-            sm: 'shadow-sm',
-            md: 'shadow-lg shadow-black/25',
-            lg: 'shadow-2xl shadow-black/45',
-            glow: 'shadow-[0_0_28px_rgba(99,102,241,0.35)]'
-          };
-          return map[this.tokens.shadow] || 'shadow-md';
+        get activePalette() {
+          return this.palette.slice(0, this.colorCount);
         },
 
-        applyPreset(type) {
-          const presets = {
-            modern: { primary: '#6366f1', surface: '#1e293b', text: '#ffffff', radius: 12, padding: 24, borderWidth: 1, shadow: 'md' },
-            cyber: { primary: '#06b6d4', surface: '#090d16', text: '#e2e8f0', radius: 4, padding: 26, borderWidth: 2, shadow: 'glow' },
-            warm: { primary: '#f97316', surface: '#292524', text: '#fafaf9', radius: 20, padding: 28, borderWidth: 1, shadow: 'lg' },
-            mono: { primary: '#f8fafc', surface: '#18181b', text: '#ffffff', radius: 0, padding: 24, borderWidth: 1, shadow: 'none' }
-          };
-          if (presets[type]) {
-            this.tokens = { ...presets[type] };
-            this.showToast('プリセットを適用しました');
+        getColor(idx) {
+          const safeIdx = Math.min(Math.max(0, parseInt(idx) || 0), this.colorCount - 1);
+          return this.palette[safeIdx] || this.palette[0];
+        },
+
+        getStyle(color1, color2, isGradient) {
+          if (!isGradient || !color2 || color1 === color2) {
+            return `background-color: ${color1};`;
           }
+          return `background: linear-gradient(135deg, ${color1}, ${color2});`;
         },
 
-        resetTokens() {
-          this.tokens = {
-            primary: '#6366f1',
-            surface: '#1e293b',
-            text: '#f8fafc',
-            radius: 12,
-            padding: 24,
-            borderWidth: 1,
-            shadow: 'md'
-          };
-          this.showToast('デフォルト設定にリセットしました');
+        get isHeaderAccessible() {
+          const hex = this.getColor(this.mapping.primaryIndex).replace('#', '');
+          if (hex.length !== 6) return true;
+          const r = parseInt(hex.substring(0, 2), 16);
+          const g = parseInt(hex.substring(2, 4), 16);
+          const b = parseInt(hex.substring(4, 6), 16);
+          const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+          return yiq < 160;
         },
 
-        generateCSS() {
-          return `:root {\n  --primary: ${this.tokens.primary};\n  --surface: ${this.tokens.surface};\n  --text: ${this.tokens.text};\n  --radius: ${this.tokens.radius}px;\n  --padding: ${this.tokens.padding}px;\n  --border-width: ${this.tokens.borderWidth}px;\n}`;
+        normalizeIndices() {
+          const maxIdx = this.colorCount - 1;
+          if (this.mapping.primaryIndex > maxIdx) this.mapping.primaryIndex = 0;
+          if (this.mapping.secondaryIndex > maxIdx) this.mapping.secondaryIndex = maxIdx;
+          if (this.mapping.accentIndex > maxIdx) this.mapping.accentIndex = maxIdx;
+          if (this.mapping.tableHeaderIndex > maxIdx) this.mapping.tableHeaderIndex = maxIdx;
         },
 
-        copyCSS() {
-          navigator.clipboard.writeText(this.generateCSS()).then(() => {
-            this.showToast('CSS変数をクリップボードにコピーしました');
+        applyPreset(preset) {
+          this.colorCount = preset.colors.length;
+          preset.colors.forEach((c, i) => { this.palette[i] = c; });
+          this.activeThemeName = preset.name;
+          this.normalizeIndices();
+          if (window.innerWidth < 1024) this.mobileTab = 'preview';
+        },
+
+        saveToMyPalettes() {
+          this.savedPalettes.unshift([...this.activePalette]);
+          localStorage.setItem('theme_simulator_master', JSON.stringify(this.savedPalettes));
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        loadSavedPalette(colors) {
+          this.colorCount = colors.length;
+          colors.forEach((c, i) => { this.palette[i] = c; });
+          this.normalizeIndices();
+          if (window.innerWidth < 1024) this.mobileTab = 'preview';
+        },
+
+        removeSavedPalette(idx) {
+          this.savedPalettes.splice(idx, 1);
+          localStorage.setItem('theme_simulator_master', JSON.stringify(this.savedPalettes));
+        },
+
+        randomizeTheme() {
+          const randHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
+          for(let i=0; i<5; i++) { this.palette[i] = randHex(); }
+          this.activeThemeName = 'カスタムランダム生成';
+        },
+
+        copyCssVariables() {
+          let css = ':root {\n';
+          this.activePalette.forEach((c, i) => { css += `  --color-${i+1}: ${c};\n`; });
+          css += `  --use-gradient: ${this.useGradient ? '1' : '0'};\n}`;
+          navigator.clipboard.writeText(css).then(() => {
+            alert('CSS変数をクリップボードにコピーしました:\n\n' + css);
           });
         },
 
-        downloadJSON() {
-          const blob = new Blob([JSON.stringify(this.tokens, null, 2)], { type: 'application/json' });
+        copyHexList() {
+          const hexes = this.activePalette.join(', ');
+          navigator.clipboard.writeText(hexes).then(() => {
+            alert('カラーコードをコピーしました:\n' + hexes);
+          });
+        },
+
+        exportJson() {
+          const payload = {
+            themeName: this.activeThemeName,
+            colorCount: this.colorCount,
+            useGradient: this.useGradient,
+            palette: this.activePalette,
+            mapping: this.mapping
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'design-tokens.json';
+          a.download = `ui-theme-${this.colorCount}c.json`;
           a.click();
           URL.revokeObjectURL(url);
-          this.showToast('JSONファイルを保存しました');
         },
 
-        showToast(msg) {
-          this.toast.message = msg;
-          this.toast.show = true;
-          this.$nextTick(() => lucide.createIcons());
-          setTimeout(() => { this.toast.show = false; }, 2400);
-        },
-
-        calculateContrast() {
-          const getLuminance = (hex) => {
-            const rgb = hex.replace('#', '').match(/.{1,2}/g)?.map(v => parseInt(v, 16) / 255) || [0, 0, 0];
-            const a = rgb.map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-            return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+        importJson(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const res = JSON.parse(event.target.result);
+              if (res.palette && Array.isArray(res.palette)) {
+                this.colorCount = res.palette.length;
+                res.palette.forEach((c, i) => { this.palette[i] = c; });
+                if (res.useGradient !== undefined) this.useGradient = res.useGradient;
+                if (res.themeName) this.activeThemeName = res.themeName;
+                if (res.mapping) this.mapping = res.mapping;
+                this.normalizeIndices();
+              }
+            } catch(err) {
+              alert('JSONの読み込みに失敗しました。');
+            }
           };
-          try {
-            const l1 = getLuminance(this.tokens.text);
-            const l2 = getLuminance(this.tokens.surface);
-            const ratio = ((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)).toFixed(2);
-            this.contrast = {
-              ratio: ratio,
-              aa: ratio >= 4.5,
-              aaa: ratio >= 7.0
-            };
-          } catch (e) {
-            this.contrast = { ratio: 'N/A', aa: false, aaa: false };
-          }
+          reader.readAsText(file);
         }
       }
     }
